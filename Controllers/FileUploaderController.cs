@@ -17,11 +17,11 @@ namespace WebApi.Controllers
         {
             db = context;
         }
-        void LogWrite(string desc)
-        {
-            db.Logs.Add(new Log(desc));
-            db.SaveChanges();
-        }
+        //void LogWrite(string desc)
+        //{
+        //    db.Logs.Add(new Log(desc));
+        //    db.SaveChanges();
+        //}
 
         [HttpPost, DisableRequestSizeLimit]
         public IActionResult Upload(IFormFile file)
@@ -37,7 +37,7 @@ namespace WebApi.Controllers
             }
 
 
-            LogWrite(myFile.FileName.ToString());
+            //LogWrite(myFile.FileName.ToString());
             List<HistValue> listTemps = new List<HistValue>();
 
 
@@ -117,7 +117,7 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-                LogWrite("Error upload " + myFile.FileName.ToString() + " " + ex.Message);
+                //LogWrite("Error upload " + myFile.FileName.ToString() + " " + ex.Message);
                 return StatusCode(500, ex.Message);
             }
 
@@ -255,16 +255,17 @@ namespace WebApi.Controllers
                 default:
                     break;
             }
-            LogWrite("Temps clear successfully");
+            //LogWrite("Temps clear successfully");
             //Tables.SaveTable(db, unit, listHistValue);
             db.SaveChanges();
+            List<string> result = new List<string>();
             //var res = String.Concat("{unit:", unit, ", dateMin:", minDate.ToString("s"), ",dateMax:", maxDate.ToString("s"), "}");
             var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).Date.ToString("s"), dateMax = listTemps.Max(m => m.Date).Date.ToString("s") };
-            CalcKenMill(res.unit, res.dateMin, res.dateMax);
-            CalcPen(res.unit, res.dateMin, res.dateMax);
-            CalcRou(res.unit, res.dateMin, res.dateMax);
-            CalcMetall(res.unit, res.dateMin, res.dateMax);
-            return Ok();
+            result.Add(CalcKenMill(res.unit, res.dateMin, res.dateMax));
+            result.Add(CalcPen(res.unit, res.dateMin, res.dateMax));
+            result.Add(CalcRou(res.unit, res.dateMin, res.dateMax));
+            //result.Add(CalcMetall(res.unit, res.dateMin, res.dateMax));
+            return Ok(result);
 
         }
         public class Res
@@ -275,9 +276,8 @@ namespace WebApi.Controllers
 
         }
 
-
         [HttpGet("Recalc")]
-        public IActionResult ReCalc(string date)
+        public IActionResult ReCalc(int unit, string date)
         {
 
             date = date.Substring(0, 10);
@@ -286,25 +286,32 @@ namespace WebApi.Controllers
             DateTime mDate = DateTime.Now;
             string maxDate = mDate.Add(-mDate.TimeOfDay).ToString("s");
             List<string> res = new List<string>();
-            for (int i = 3; i <= 9; i++)
+            int startRou = 3;
+            int stopRou = 9;
+            int startPen = 5;
+            
+            if (unit>0)
             {
-                CalcRou(i, minDate, maxDate);
+                startRou = unit;
+                stopRou = unit;
+                startPen = unit;
+            }
+            for (int i = startRou; i <= stopRou; i++)
+            {
+                res.Add(CalcRou(i, minDate, maxDate));
+            }
+            for (int i = startPen; i <= stopRou; i++)
+            {
+                res.Add(CalcKenMill(i, minDate, maxDate));
+                res.Add(CalcPen(i, minDate, maxDate));
             }
 
-            for (int i = 5; i <= 9; i++)
-            {
-                CalcKenMill(i, minDate, maxDate);
-                CalcPen(i, minDate, maxDate);
-                CalcRou(i, minDate, maxDate);
-            }
-
-            return Ok("Recalc end!");
+            return Ok(res);
         }
 
-        [HttpGet("CalcKenMill")]
-        public ActionResult CalcKenMill(int unit, string dateMin, string dateMax)
+        private string CalcKenMill(int unit, string dateMin, string dateMax)
         {
-            if (unit == 3 || unit == 4) return Ok();
+            if (unit == 3 || unit == 4) return String.Empty;
             DateTime date_min = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
             DateTime date_max = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
             var mergeSettings = new JsonMergeSettings
@@ -325,7 +332,7 @@ namespace WebApi.Controllers
             try
             {
 
-                if (unit == 3 || unit == 4) return Ok();
+                if (unit == 3 || unit == 4) return String.Empty;
                 List<Ken> new_kens = new List<Ken>();
                 int idkA = signals.FirstOrDefault(f => f.AddInfo == list_info[0] && f.Unit == unit).ID;
                 int idkB = signals.FirstOrDefault(f => f.AddInfo == list_info[1] && f.Unit == unit).ID;
@@ -558,22 +565,17 @@ namespace WebApi.Controllers
                 log.Add("new kens=" + new_kens.Count);
                 db.Kens.AddRange(new_kens);
                 db.SaveChanges();
-
-
-
-
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return StatusCode(500, e.Message);
+                return "Блок " + unit + ":КЭН " + ex.Message;
             }
             //return Json(log);
-            return Ok("Блок " + unit + ": расчет КЭН, ШБМ завершен.");
+            return "Блок " + unit + ": расчет КЭН, ШБМ завершен.";
         }
-        [HttpGet("CalcPen")]
-        public ActionResult CalcPen(int unit, string dateMin, string dateMax)
+        private string CalcPen(int unit, string dateMin, string dateMax)
         {
-            if (unit == 3 || unit == 4) return Ok();
+            if (unit == 3 || unit == 4) return String.Empty;
             DateTime low_condition = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
             DateTime high_condition = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
@@ -682,7 +684,7 @@ namespace WebApi.Controllers
 
 
 
-            if (unit == 3 || unit == 4) return Ok();
+            if (unit == 3 || unit == 4) return String.Empty;
 
             Pen pen = db.Pens.FirstOrDefault(f => f.Datetime == firstDayOfMonth);
 
@@ -808,10 +810,9 @@ namespace WebApi.Controllers
 
 
 
-            return Ok("Блок " + unit + ": расчет ПЭН завершен." + JsonConvert.SerializeObject(Errors));
+            return "Блок " + unit + ": расчет ПЭН завершен." + JsonConvert.SerializeObject(Errors);
         }
-        [HttpGet("CalcRou")]
-        public ActionResult CalcRou(int unit, string dateMin, string dateMax)
+        private string CalcRou(int unit, string dateMin, string dateMax)
         {
             try
             {
@@ -839,7 +840,7 @@ namespace WebApi.Controllers
                 List<HistValue> data = Tables.GetTable(db, unit, d, nextDay);
                 if (data.Count == 0)
                 {
-                    return Ok("Блок " + unit + ": нет данных" + d.ToString("s"));
+                    return "Блок " + unit + ": нет данных" + d.ToString("s");
                 }
 
                 List<float> newrou = new List<float>();
@@ -933,9 +934,9 @@ namespace WebApi.Controllers
             catch (Exception ex)
             {
 
-                return Ok("Блок " + unit + ": "+ex.Message);
+                return "Блок " + unit + ":РОУ "+ex.Message;
             }
-            return Ok("Блок " + unit + ": расчет РОУ завершен.");
+            return "Блок " + unit + ": расчет РОУ завершен.";
         }
         [HttpGet("CreateROURow")]
         public ActionResult CreateROURow()
@@ -993,17 +994,7 @@ namespace WebApi.Controllers
             result.FileDownloadName = "Metall" + unit.ToString() + ".xml";
             return result;
         }
-        public class EditStage
-        {
-            public int Id { get; set; }
-            public string Date { get; set; }
-            public int Generator { get; set; }
-            public int Speed { get; set; }
-            public int Dva { get; set; }
-            public int Dvb { get; set; }
-            public string? Press { get; set; }
-            public int Stage { get; set; }
-        }
+        
 
         [HttpGet("Edit")]
         public IActionResult GetEditStages(string date, string unit)
@@ -1049,7 +1040,7 @@ namespace WebApi.Controllers
 
             return Ok(editStages);
         }
-        [HttpPut("{id}")]
+        [HttpPut]
         public IActionResult UpdateStagesEdit(int key, string values, int unit, string date)
         {
             //HistValue histValue = db.HistValues.FirstOrDefault(f => f.ID == key);
@@ -1089,15 +1080,7 @@ namespace WebApi.Controllers
 
             return Ok();
         }
-
-
-
-        public class Error
-        {
-
-            public DateTime Date { get; set; }
-            public List<string> Signals { get; set; } = new List<string>();
-        }
+        
         [HttpGet("CheckData")]
         public IActionResult CheckData(string date)
         {
@@ -1217,9 +1200,23 @@ namespace WebApi.Controllers
             return Ok();
         }
 
+        private class Error
+        {
+            public DateTime Date { get; set; }
+            public List<string> Signals { get; set; } = new List<string>();
+        }
 
-
-
+         private class EditStage
+        {
+            public int Id { get; set; }
+            public string Date { get; set; }
+            public int Generator { get; set; }
+            public int Speed { get; set; }
+            public int Dva { get; set; }
+            public int Dvb { get; set; }
+            public string? Press { get; set; }
+            public int Stage { get; set; }
+        }
 
     }
 
