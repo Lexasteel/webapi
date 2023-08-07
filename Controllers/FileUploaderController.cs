@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
@@ -258,12 +259,14 @@ namespace WebApi.Controllers
             //Tables.SaveTable(db, unit, listHistValue);
             db.SaveChanges();
             //var res = String.Concat("{unit:", unit, ", dateMin:", minDate.ToString("s"), ",dateMax:", maxDate.ToString("s"), "}");
-            var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).ToString("s"), dateMax = listTemps.Max(m => m.Date).ToString("s") };
-
-            return Ok(res);
+            var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).Date.ToString("s"), dateMax = listTemps.Max(m => m.Date).Date.ToString("s") };
+            CalcKenMill(res.unit, res.dateMin, res.dateMax);
+            CalcPen(res.unit, res.dateMin, res.dateMax);
+            CalcRou(res.unit, res.dateMin, res.dateMax);
+            CalcMetall(res.unit, res.dateMin, res.dateMax);
+            return Ok();
 
         }
-        
         public class Res
         {
             public int unit { get; set; }
@@ -282,6 +285,11 @@ namespace WebApi.Controllers
 
             DateTime mDate = DateTime.Now;
             string maxDate = mDate.Add(-mDate.TimeOfDay).ToString("s");
+            List<string> res = new List<string>();
+            for (int i = 3; i <= 9; i++)
+            {
+                CalcRou(i, minDate, maxDate);
+            }
 
             for (int i = 5; i <= 9; i++)
             {
@@ -800,12 +808,13 @@ namespace WebApi.Controllers
 
 
 
-            return Ok("Блок " + unit + ": расчет ПЭН завершен.");
+            return Ok("Блок " + unit + ": расчет ПЭН завершен." + JsonConvert.SerializeObject(Errors));
         }
         [HttpGet("CalcRou")]
         public ActionResult CalcRou(int unit, string dateMin, string dateMax)
         {
-            if (unit == 3 || unit == 4) return Ok();
+            try
+            {
             DateTime low_condition = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
             DateTime high_condition = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
@@ -824,49 +833,68 @@ namespace WebApi.Controllers
                 {
                     rou = new Rou() { Datetime = d };
                     db.Rous.Add(rou);
-                    db.SaveChanges();
                 }
 
-                
+
                 List<HistValue> data = Tables.GetTable(db, unit, d, nextDay);
-                string id_gen = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "generator").ID.ToString();
-                string id = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou24").ID.ToString();
-                List<float> iEnumAvRou24 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id].ToObject<float>()).ToList();
-                List<float> newrou = new List<float>();
-                foreach (float itemrou in iEnumAvRou24)
+                if (data.Count == 0)
                 {
-                    if (itemrou >= 0)
-                    {
-                        newrou.Add(itemrou);
-                    }
-                    else
-                    {
-                        newrou.Add(0);
-                    }
-                }
-                float avRou = 0;
-                if (iEnumAvRou24.Count > 0)
-                {
-                    avRou = (float)Math.Round(newrou.Average(), 2);
-                }
-                switch (unit)
-                {
-                    case 3: rou.Unit3 = avRou; break;
-                    case 4: rou.Unit4 = avRou; break;
-                    case 5: rou.Unit5 = avRou; break;
-                    case 6: rou.Unit6 = avRou; break;
-                    case 7: rou.Unit7 = avRou; break;
-                    case 8: rou.Unit8 = avRou; break;
-                    case 9: rou.Unit9 = avRou; break;
-                    default: break;
+                    return Ok("Блок " + unit + ": нет данных" + d.ToString("s"));
                 }
 
+                List<float> newrou = new List<float>();
+                float avRou = 0;
+                string id_gen = "";
+                if (unit >= 5 && unit <= 9)
+                {
+
+
+                    id_gen = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "generator").ID.ToString();
+                    string id = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou24").ID.ToString();
+                    List<float> iEnumAvRou24 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id].ToObject<float>()).ToList();
+
+                    foreach (float itemrou in iEnumAvRou24)
+                    {
+                        if (itemrou >= 0)
+                        {
+                            newrou.Add(itemrou);
+                        }
+                        else
+                        {
+                            newrou.Add(0);
+                        }
+                    }
+                    avRou = 0;
+                    if (iEnumAvRou24.Count > 0)
+                    {
+                        avRou = (float)Math.Round(newrou.Average(), 2);
+                    }
+                    switch (unit)
+                    {
+                        case 3: rou.Unit3 = avRou; break;
+                        case 4: rou.Unit4 = avRou; break;
+                        case 5: rou.Unit5 = avRou; break;
+                        case 6: rou.Unit6 = avRou; break;
+                        case 7: rou.Unit7 = avRou; break;
+                        case 8: rou.Unit8 = avRou; break;
+                        case 9: rou.Unit9 = avRou; break;
+                        default: break;
+                    }
+                }
                 if (unit == 3 || unit == 7 || unit == 9)
                 {
                     ///////////////////////////140/15//////////////////////////////////////
-                    id = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou140").ID.ToString();
+                    string id140 = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou140").ID.ToString();
+                    List<float> iEnumAvRou140 = new List<float>();
+                    if (unit == 3)
+                    {
+                        iEnumAvRou140 = data.Select(s => s.JsonData[id140].ToObject<float>()).ToList();
+                    }
+                    else
+                    {
+                        iEnumAvRou140 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id140].ToObject<float>()).ToList();
+                    }
 
-                    List<float> iEnumAvRou140 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id].ToObject<float>()).ToList();
 
                     newrou.Clear();
                     foreach (float itemrou in iEnumAvRou140)
@@ -899,11 +927,16 @@ namespace WebApi.Controllers
 
 
 
-            ///////////////////////////140/15//////////////////////////////////////
-            ///
-            return Ok($"Блок {unit}: расчет РОУ завершен c {low_condition.ToString("dd.MM.yyyy")} to {high_condition.ToString("dd.MM.yyyy")}.");
-        }
+                ///////////////////////////140/15//////////////////////////////////////
+                ///
+            }
+            catch (Exception ex)
+            {
 
+                return Ok("Блок " + unit + ": "+ex.Message);
+            }
+            return Ok("Блок " + unit + ": расчет РОУ завершен.");
+        }
         [HttpGet("CreateROURow")]
         public ActionResult CreateROURow()
         {
@@ -918,6 +951,47 @@ namespace WebApi.Controllers
             }
 
             return Ok();
+        }
+
+        [HttpGet("Metall")]
+        public ActionResult CalcMetall(int unit, string dateMin, string dateMax)
+        {
+            List<string> res = new List<string>();
+            res.Add("Блок " + unit.ToString());
+            DateTime minDate = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            DateTime maxDate = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            var signals = db.Signals.Where(w => w.AddInfo.Contains("metall"));
+            List<HistValue> data = Tables.GetTable(db, unit, minDate, maxDate);
+            foreach (var signal in signals)
+            {
+                if (signal.AddInfo.Contains("VD") || signal.AddInfo.Contains("ND"))
+                {
+                    foreach (var item in data)
+                    {
+                        if (item.JsonData[signal.ID.ToString()].ToObject<float>() > 565)
+                        {
+                            res.Add(String.Join(';', item.Date.ToString("g"), signal.Desc, item.JsonData[signal.ID.ToString()].ToObject<float>()));
+                        }
+                    }
+
+                }
+                if (signal.AddInfo.Contains("SH"))
+                {
+                    foreach (var item in data)
+                    {
+                        if (item.JsonData[signal.ID.ToString()].ToObject<float>() > 535)
+                        {
+                            res.Add(String.Join(';', item.Date.ToString("g"), signal.Desc, item.JsonData[signal.ID.ToString()].ToObject<float>()));
+                        }
+                    }
+                }
+            }
+            var contentType = "text/xml";
+            var content = "<content>Your content</content>";
+            var bytes = Encoding.UTF8.GetBytes(content);
+            var result = new FileContentResult(bytes, contentType);
+            result.FileDownloadName = "Metall" + unit.ToString() + ".xml";
+            return result;
         }
         public class EditStage
         {
@@ -973,126 +1047,46 @@ namespace WebApi.Controllers
                 editStages.Add(edit);
             }
 
-            //foreach (var item in histValues)
-            //{
-            //    JObject j = new JObject();
-            //    j.Add("id", item.ID);
-            //    j.Add("date", item.Date);
-            //    j.Add("generator", item.JsonData[id_gen]);
-            //    j.Add("speed", item.JsonData[id_speed]);
-            //    j.Add("dva", item.JsonData[id_dva]);
-            //    j.Add("dvb", item.JsonData[id_dvb]);
-            //    j.Add("press", item.JsonData[id_press]);
-            //    j.Add("stage", item.JsonData[id_stage]);
-            //    li.Add(j);
-            //}
-
             return Ok(editStages);
         }
-
-
-
-
-        [HttpPut("Edit")]
-
-        public async Task<IActionResult> UpdateStagesEdit()
+        [HttpPut("{id}")]
+        public IActionResult UpdateStagesEdit(int key, string values, int unit, string date)
         {
+            //HistValue histValue = db.HistValues.FirstOrDefault(f => f.ID == key);
+            var d = DateTime.Parse(date);
+            HistValue histValue = Tables.GetTable(db, unit, d, d.AddDays(1)).FirstOrDefault(f => f.ID == key);
+            var deser = JsonConvert.DeserializeObject<JObject>(values);
+            var signals = db.Signals.Where(w => w.Unit == unit);
 
-            string body = "";
-            using (StreamReader stream = new StreamReader(Request.Body))
-            {
-                body = await stream.ReadToEndAsync();
-            }
-            var deser = JObject.Parse(body);
+            string id_stage = signals.FirstOrDefault(f => f.Code.Contains("Stage")).ID.ToString();
 
-            int id = deser["id"].Value<int>();
-            string values = deser["values"].ToString();
-            int unit = (int)deser["unit"];
-            int stage_number = JObject.Parse(values)["stage"].Value<int>();
-            DateTime date = new DateTime();
-            string id_stage = db.Signals.FirstOrDefault(f =>f.Unit==unit && f.Code.Contains("Stage")).ID.ToString();
-            
-            JObject json = new JObject();
-            var h = new Object();
+            int number = deser["stage"].ToObject<int>();
+            JObject j = histValue.JsonData;
+            j[id_stage] = deser["stage"];
+            histValue.Data = JsonConvert.SerializeObject(j);
 
-            switch (unit)
-            {
-                case 3:
-                    var h3 = db.Hist3Values.FirstOrDefault(h => h.ID == id);
-                    date = h3.Date;
-                    json = JObject.Parse(h3.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h3.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 4:
-                    var h4 = db.Hist4Values.FirstOrDefault(h => h.ID == id);
-                    date = h4.Date;
-                    json = JObject.Parse(h4.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h4.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 5:
-                    var h5 = db.Hist5Values.FirstOrDefault(h => h.ID == id);
-                    date = h5.Date;
-                    json = JObject.Parse(h5.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h5.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 6:
-                    var h6 = db.Hist6Values.FirstOrDefault(h => h.ID == id);
-                    date = h6.Date;
-                    json = JObject.Parse(h6.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h6.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 7:
-                    var h7 = db.Hist7Values.FirstOrDefault(h => h.ID == id);
-                    date = h7.Date;
-                    json = JObject.Parse(h7.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h7.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 8:
-                    var h8 = db.Hist8Values.FirstOrDefault(h => h.ID == id);
-                    date = h8.Date;
-                    json = JObject.Parse(h8.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h8.Data = JsonConvert.SerializeObject(json);
-                    break;
-                case 9:
-                    var h9 = db.Hist9Values.FirstOrDefault(h => h.ID == id);
-                    date = h9.Date;
-                    json = JObject.Parse(h9.Data);
-                    json[id_stage] = JObject.Parse(values)["stage"];
-                    h9.Data = JsonConvert.SerializeObject(json);
-                    break;
-                default:
-                    break;
-            }
-            db.SaveChanges();
+            Tables.SaveTable(db, unit, new List<HistValue>() { histValue });
 
-            Stage? stage = db.Stages.FirstOrDefault(f => f.Date == date && f.Unit == unit);
-
-            if (stage != null && stage_number == 0)
-            {
-                db.Stages.Remove(stage);
-            }
-            if (stage != null && stage_number > 0)
-            {
-                stage.Number = stage_number;
-            }
-
-            if (stage == null && stage_number > 0)
+            Stage? stage = db.Stages.FirstOrDefault(f => f.Date == histValue.Date && f.Unit == unit);
+            if (stage == null && number > 0)
             {
                 stage = new Stage();
                 stage.Unit = unit;
-                stage.Date = date;
-                stage.Number = stage_number;
+                stage.Date = histValue.Date;
+                stage.Number = number;
                 db.Stages.Add(stage);
             }
 
 
+            //if (number == 0 && stage != null)
+            //{
+            //    Stage del_stage = db.Stages.FirstOrDefault(f => f.Date == histValue.Date && f.Unit == unit);
+            //    db.Stages.Remove(del_stage);
+            //}
+
             db.SaveChanges();
+
+
             return Ok();
         }
 
