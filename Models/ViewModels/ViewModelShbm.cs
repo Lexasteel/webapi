@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.CSharp.RuntimeBinder;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +8,7 @@ namespace PUDPS.Models.ViewModels
 {
     public class ViewModelShbm
     {
-        public DateTime Id { get; set; }
+        public DateTime Datetime { get; set; }
         public float Shbm5ATime { get; set; }
         public float Shbm5BTime { get; set; }
         public double Shbm5Downtime { get; set; }
