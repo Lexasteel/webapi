@@ -39,7 +39,7 @@ namespace WeoApi.Controllers
 
             foreach (var item in kens)
             {
-                ViewModelShbm modelshbm = new ViewModelShbm() { Id = item.Key };
+                ViewModelShbm modelshbm = new ViewModelShbm() { Datetime = item.Key };
                 foreach (var ken in item)
                 {
                     modelshbm.Shbm5ATime = GetTime(item, id_shbm5A).Time;

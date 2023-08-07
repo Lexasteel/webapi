@@ -620,65 +620,66 @@ namespace WebApi.Controllers
             public DateTime oldDate { get; set; }
             public DateTime oldEndDate { get; set; }
         }
-        [HttpPost]
-        public ActionResult InsertStage(string values)
-        {
 
-            var servalues = JsonConvert.DeserializeObject<Values>(values);
+        //[HttpPost]
+        //public ActionResult InsertStage(string values)
+        //{
 
-            if (servalues.date > new DateTime())
-            {
-                Stage stage = new Stage();
-                stage.Date = servalues.date;
-                stage.Number = 4;
-                stage.Unit = servalues.unit;
-                db.Stages.Add(stage);
-                db.SaveChanges();
-            }
-            if (servalues.endDate > new DateTime())
-            {
-                Stage stage = new Stage();
-                stage.Date = servalues.endDate;
-                stage.Number = 5;
-                stage.Unit = servalues.unit;
-                db.Stages.Add(stage);
-                db.SaveChanges();
-            }
+        //    var servalues = JsonConvert.DeserializeObject<Values>(values);
 
-            return new OkResult();
+        //    if (servalues.date > new DateTime())
+        //    {
+        //        Stage stage = new Stage();
+        //        stage.Date = servalues.date;
+        //        stage.Number = 4;
+        //        stage.Unit = servalues.unit;
+        //        db.Stages.Add(stage);
+        //        db.SaveChanges();
+        //    }
+        //    if (servalues.endDate > new DateTime())
+        //    {
+        //        Stage stage = new Stage();
+        //        stage.Date = servalues.endDate;
+        //        stage.Number = 5;
+        //        stage.Unit = servalues.unit;
+        //        db.Stages.Add(stage);
+        //        db.SaveChanges();
+        //    }
 
-        }
-        [HttpPut("{id}")]
-        public ActionResult UpdateStage(string values)
-        {
-            var servalues = JsonConvert.DeserializeObject<Values>(values);
-            if (servalues.date > new DateTime())
-            {
-                Stage stage = db.Stages.FirstOrDefault(f => f.Date == servalues.oldDate && f.Unit == servalues.unit && f.Number == 4);
-                stage.Date = servalues.date;
+        //    return new OkResult();
 
-                db.SaveChanges();
-            }
-            if (servalues.endDate > new DateTime())
-            {
-                Stage stage = db.Stages.FirstOrDefault(f => f.Date == servalues.oldEndDate && f.Unit == servalues.unit && f.Number == 5);
-                if (stage == null)
-                {
-                    stage = new Stage() { Unit = servalues.unit, Number = 5 };
-                    db.Stages.Add(stage);
+        //}
+        //[HttpPut("{id}")]
+        //public ActionResult UpdateStage(string values)
+        //{
+        //    var servalues = JsonConvert.DeserializeObject<Values>(values);
+        //    if (servalues.date > new DateTime())
+        //    {
+        //        Stage stage = db.Stages.FirstOrDefault(f => f.Date == servalues.oldDate && f.Unit == servalues.unit && f.Number == 4);
+        //        stage.Date = servalues.date;
 
-                }
-                stage.Date = servalues.endDate;
+        //        db.SaveChanges();
+        //    }
+        //    if (servalues.endDate > new DateTime())
+        //    {
+        //        Stage stage = db.Stages.FirstOrDefault(f => f.Date == servalues.oldEndDate && f.Unit == servalues.unit && f.Number == 5);
+        //        if (stage == null)
+        //        {
+        //            stage = new Stage() { Unit = servalues.unit, Number = 5 };
+        //            db.Stages.Add(stage);
 
-                db.SaveChanges();
-            }
-            return new OkResult();
-        }
-        [HttpDelete("{id}")]
-        public ActionResult DeleteStage(string values)
-        {
-            var servalues = JsonConvert.DeserializeObject<Values>(values);
-            return new OkResult();
-        }
+        //        }
+        //        stage.Date = servalues.endDate;
+
+        //        db.SaveChanges();
+        //    }
+        //    return new OkResult();
+        //}
+        //[HttpDelete("{id}")]
+        //public ActionResult DeleteStage(string values)
+        //{
+        //    var servalues = JsonConvert.DeserializeObject<Values>(values);
+        //    return new OkResult();
+        //}
     }
 }
