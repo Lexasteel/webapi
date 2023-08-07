@@ -13,7 +13,7 @@ builder.Services.AddSwaggerGen();
 var mySQLConnection = builder.Configuration.GetConnectionString("MySQLConnection");
 builder.Services.AddDbContext<StartsContext>(options =>
 options.UseMySql(mySQLConnection, new MySqlServerVersion(new Version(8, 0, 30)), options => options.EnableRetryOnFailure()));
-var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+//var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 //builder.Services.AddCors(options =>
 //{
 //    options.AddDefaultPolicy(
@@ -28,11 +28,10 @@ var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: "MyAllowSpecificOrigins",
+    options.AddPolicy(name: "MyAllowSpecific",
                       policy =>
                       {
-                          policy.WithOrigins("*")
-                          .AllowAnyHeader()
+                          policy.AllowAnyHeader()
                           .AllowAnyMethod()
                           .AllowAnyOrigin();
                           
@@ -55,7 +54,7 @@ app.UseHttpsRedirection();
 //app.UseAuthorization();
 app.UseStaticFiles();
 //app.UseCors("MyAllowSpecificOrigins");
-app.UseCors(builder => builder.AllowAnyOrigin());
+app.UseCors("MyAllowSpecific");
 app.MapControllers();
 
 app.Run();

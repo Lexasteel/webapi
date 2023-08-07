@@ -92,7 +92,7 @@ namespace WeoApi.Controllers
             {
                 DateFormatString = "yyyy-MM-dd"
             };
-            return Ok(viewModelShbms);
+            return Ok(viewModelShbms.OrderBy(o=>o.Datetime));
         }
     }
 }
