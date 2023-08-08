@@ -268,13 +268,7 @@ namespace WebApi.Controllers
             return Ok(result);
 
         }
-        public class Res
-        {
-            public int unit { get; set; }
-            public string dateMin { get; set; }
-            public string dateMax { get; set; }
-
-        }
+        
 
         [HttpGet("Recalc")]
         public IActionResult ReCalc(int unit, string date)
@@ -308,7 +302,6 @@ namespace WebApi.Controllers
 
             return Ok(res);
         }
-
         private string CalcKenMill(int unit, string dateMin, string dateMax)
         {
             if (unit == 3 || unit == 4) return String.Empty;
@@ -1082,48 +1075,54 @@ namespace WebApi.Controllers
         }
         
         [HttpGet("CheckData")]
-        public IActionResult CheckData(string date)
+        public IActionResult CheckData(int unit, string date)
         {
 
             List<Error> response = new List<Error>();
 
             DateTime dateTime = DateTime.Parse(date, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            dateTime = dateTime.Add(-dateTime.TimeOfDay);
-            //DateTime dateTime = DateTime.ParseExact(date, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            
             DateTime now = DateTime.Now;
-            now = now.Add(-now.TimeOfDay);
-            for (int i = 3; i <= 9; i++)
+            now = now.Add(-now.TimeOfDay).AddSeconds(-1);
+            int start = unit;
+            int stop = unit;
+            if (unit==0)
             {
-                List<Signal> signals = db.Signals.Where(w => w.Unit == i).ToList();
+                start = 3;
+                stop = 9;
+            }
+            for (int i = start; i <= stop; i++)
+            {
+               
                 switch (i)
                 {
                     case 3:
                         var histValues = db.Hist3Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 4:
                         histValues = db.Hist4Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 5:
                         histValues = db.Hist5Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 6:
                         histValues = db.Hist6Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 7:
                         histValues = db.Hist7Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 8:
                         histValues = db.Hist8Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                     case 9:
                         histValues = db.Hist9Values.Where(w => w.Date >= dateTime && w.Date <= now).Select(s => new HistValue() { ID = s.ID, Date = s.Date, Data = s.Data });
-                        response.AddRange(DataCheckInOneTable(dateTime, now, signals, histValues));
+                        response.AddRange(DataCheckInOneTable(dateTime, now, i, histValues));
                         break;
                 }
 
@@ -1132,13 +1131,14 @@ namespace WebApi.Controllers
             }
 
 
-            List<Error> DataCheckInOneTable(DateTime dateTime, DateTime now, List<Signal> signals, IQueryable<HistValue> histValues)
+            List<Error> DataCheckInOneTable(DateTime dateTime, DateTime now, int unit, IQueryable<HistValue> histValues)
             {
                 List<Error> response = new List<Error>();
+                List<Signal> signals = db.Signals.Where(w => w.Unit == unit).ToList();
                 int count = signals.Count;
                 for (DateTime i = dateTime; i <= now; i = i.AddMinutes(1))
                 {
-                    Error error = new Error() { Date = i };
+                    Error error = new Error() { Date = i, Unit=unit.ToString()  };
                     var row = histValues.FirstOrDefault(f => f.Date == i);
                     if (row == null)
                     {
@@ -1162,8 +1162,9 @@ namespace WebApi.Controllers
 
                 return response;
             }
-
-            return Ok(response);
+            
+            return Ok(response.GroupBy(g=>g.Date).Select(s => String.Join('-', s.Key,"Блоки: "+String.Join(',',s.Select(u=>u.Unit))+
+                ";")));
         }
 
         [HttpGet("ReturnStage")]
@@ -1200,10 +1201,19 @@ namespace WebApi.Controllers
             return Ok();
         }
 
+        private class Res
+        {
+            public int unit { get; set; }
+            public string dateMin { get; set; }
+            public string dateMax { get; set; }
+
+        }
         private class Error
         {
             public DateTime Date { get; set; }
             public List<string> Signals { get; set; } = new List<string>();
+
+            public string Unit { get; set; }
         }
 
          private class EditStage
