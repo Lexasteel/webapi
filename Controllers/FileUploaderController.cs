@@ -300,7 +300,7 @@ namespace WebApi.Controllers
                 res.Add(CalcPen(i, minDate, maxDate));
             }
 
-            return Ok(res);
+            return Ok(String.Join(';',res));
         }
         private string CalcKenMill(int unit, string dateMin, string dateMax)
         {
@@ -803,7 +803,7 @@ namespace WebApi.Controllers
 
 
 
-            return "Блок " + unit + ": расчет ПЭН завершен." + JsonConvert.SerializeObject(Errors);
+            return "Блок " + unit + ": расчет ПЭН завершен." + String.Join(',',Errors);
         }
         private string CalcRou(int unit, string dateMin, string dateMax)
         {
