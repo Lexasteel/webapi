@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Net.Http.Headers;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
@@ -990,10 +989,9 @@ namespace WebApi.Controllers
         
 
         [HttpGet("Edit")]
-        public IActionResult GetEditStages(string date, string unit)
+        public IActionResult GetEditStages(int unit, string date)
         {
-            int _unit = Convert.ToInt32(unit);
-            if (_unit == 0)
+            if (unit == 0 || unit==3 || unit==4)
             {
                 return Ok("");
             }
@@ -1001,12 +999,9 @@ namespace WebApi.Controllers
             DateTime minDate = DateTime.Parse(date).Date;
             DateTime maxDate = minDate.AddHours(24);
 
-            //  var histValues = db.HistValues.Where(w => w.Date >= minDate && w.Date < maxDate);
-
-            var histValues = Tables.GetTable(db, _unit, minDate, maxDate);
-
-            var signals = db.Signals.Where(w => w.Unit == _unit);
-            List<JObject> li = new List<JObject>();
+            var histValues = Tables.GetTable(db, unit, minDate, maxDate);
+            if (histValues.Count == 0) return Ok("");
+            var signals = db.Signals.Where(w => w.Unit == unit);
 
             string id_gen = signals.FirstOrDefault(f => f.Code.Contains("BR")).ID.ToString();
             string id_dva = signals.FirstOrDefault(f => f.Code.Contains("HLB10")).ID.ToString();
@@ -1015,59 +1010,68 @@ namespace WebApi.Controllers
             string id_press = signals.FirstOrDefault(f => f.Code.Contains("CP001")).ID.ToString();
             string id_stage = signals.FirstOrDefault(f => f.Code.Contains("Stage")).ID.ToString();
 
-            List<EditStage> editStages = new List<EditStage>();
-
-            foreach (var item in histValues)
+            var f = histValues.Select(s => new 
             {
-                EditStage edit = new EditStage();
-                edit.Id = item.ID;
-                edit.Date = item.Date.ToString("s");
-                edit.Generator = (int)item.JsonData[id_gen];
-                edit.Speed = (int)item.JsonData[id_speed];
-                edit.Dva = (int)item.JsonData[id_dva];
-                edit.Dvb = (int)item.JsonData[id_dvb];
-                edit.Press = item.JsonData[id_press].ToString();
-                edit.Stage = (int)item.JsonData[id_stage];
-                editStages.Add(edit);
-            }
-
-            return Ok(editStages);
+                Id = s.ID,
+                Date = s.Date.ToString("s"),
+                Generator = s.JsonData[id_gen]!.Value<int>(),
+                Speed = s.JsonData[id_speed].Value<int>(),
+                Dva = s.JsonData[id_dva].Value<int>(),
+                Dvb = s.JsonData[id_dvb].Value<int>(),
+                Press = s.JsonData[id_press].ToString(),
+                Stage = s.JsonData[id_stage].Value<int>()
+            });
+            return Ok(f);
         }
         [HttpPut]
-        public IActionResult UpdateStagesEdit(int key, string values, int unit, string date)
+        public async Task<IActionResult> UpdateStagesEdit()
         {
-            //HistValue histValue = db.HistValues.FirstOrDefault(f => f.ID == key);
-            var d = DateTime.Parse(date);
-            HistValue histValue = Tables.GetTable(db, unit, d, d.AddDays(1)).FirstOrDefault(f => f.ID == key);
-            var deser = JsonConvert.DeserializeObject<JObject>(values);
-            var signals = db.Signals.Where(w => w.Unit == unit);
+            string body = "";
+            using (StreamReader stream = new StreamReader(Request.Body))
+            {
+                body = await stream.ReadToEndAsync();
+            }
+            var ds = JObject.Parse(body);
 
-            string id_stage = signals.FirstOrDefault(f => f.Code.Contains("Stage")).ID.ToString();
+            int id = ds["id"].Value<int>();
+            string values = ds["values"].ToString();
+            int unit = ds["unit"].Value<int>(); 
+            string date = ds["date"].ToString();
 
-            int number = deser["stage"].ToObject<int>();
-            JObject j = histValue.JsonData;
-            j[id_stage] = deser["stage"];
+            DateTime d = DateTime.Parse(date, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            HistValue histValue = Tables.GetTable(db, unit, d, d.AddDays(1)).FirstOrDefault(f => f.ID == id);
+            string id_stage = db.Signals.FirstOrDefault(f => f.Unit == unit & f.Code.Contains("Stage")).ID.ToString();
+            //var v = histValue.Data.Replace("{", "").Replace("}", "").Split(',').Select(s => s.Split(':')).ToDictionary(sp => sp[0], sp => sp[1]);
+            var deser_values = JsonConvert.DeserializeObject<JObject>(values);
+            int number_stage = deser_values["stage"].ToObject<int>();
+
+            JObject j = JObject.Parse(histValue.Data);
+            j[id_stage] = number_stage;
             histValue.Data = JsonConvert.SerializeObject(j);
 
             Tables.SaveTable(db, unit, new List<HistValue>() { histValue });
 
             Stage? stage = db.Stages.FirstOrDefault(f => f.Date == histValue.Date && f.Unit == unit);
-            if (stage == null && number > 0)
+            if (stage == null && number_stage > 0)
             {
                 stage = new Stage();
                 stage.Unit = unit;
                 stage.Date = histValue.Date;
-                stage.Number = number;
+                stage.Number = number_stage;
                 db.Stages.Add(stage);
             }
-
-
-            //if (number == 0 && stage != null)
-            //{
-            //    Stage del_stage = db.Stages.FirstOrDefault(f => f.Date == histValue.Date && f.Unit == unit);
-            //    db.Stages.Remove(del_stage);
-            //}
-
+            
+            if (stage != null)
+            {
+                if (number_stage == 0)
+                {
+                    db.Stages.Remove(stage);
+                }
+                if (number_stage > 0)
+                {
+                    stage.Number = number_stage;
+                }
+            }
             db.SaveChanges();
 
 
