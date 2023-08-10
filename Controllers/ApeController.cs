@@ -133,6 +133,7 @@ namespace WebApi.Controllers
                 //HistValue ttt = db.HistValues.FirstOrDefault(f => f.Date == stage3.Date);
                 // Tables tables = new Tables();
                 HistValue ttt = Tables.GetTable(db, unit, stage3.Date, stage3.Date.AddMinutes(1)).FirstOrDefault(f => f.Date == stage3.Date);//  db.HistValues.FirstOrDefault(f => f.Date == stage3.Date);
+                if (ttt == null) { return Ok(new List<string>()); }
                 value = ttt.JsonData[cvdId.ID.ToString()].ToObject<float>();
 
 
