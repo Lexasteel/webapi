@@ -259,7 +259,7 @@ namespace WebApi.Controllers
             db.SaveChanges();
             List<string> result = new List<string>();
             //var res = String.Concat("{unit:", unit, ", dateMin:", minDate.ToString("s"), ",dateMax:", maxDate.ToString("s"), "}");
-            var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).Date.ToString("s"), dateMax = listTemps.Max(m => m.Date).Date.ToString("s") };
+            var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).ToString("s"), dateMax = listTemps.Max(m => m.Date).AddMinutes(1).ToString("s") };
             result.Add(CalcKenMill(res.unit, res.dateMin, res.dateMax));
             result.Add(CalcPen(res.unit, res.dateMin, res.dateMax));
             result.Add(CalcRou(res.unit, res.dateMin, res.dateMax));
