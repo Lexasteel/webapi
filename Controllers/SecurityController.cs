@@ -28,7 +28,7 @@ namespace WebApi.Controllers
             new User { UserName="opc" , Password="opc", Role = "Admin" },
         };
 
-        [HttpPost("/token")]
+        [HttpPost("token")]
         public IActionResult Token([FromBody]User user)
         {
             var identity = GetIdentity(user.UserName, user.Password);
