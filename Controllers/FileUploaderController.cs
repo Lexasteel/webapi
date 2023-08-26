@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text;
 using WebApi.Models;
 
@@ -16,11 +18,9 @@ namespace WebApi.Controllers
         {
             db = context;
         }
-        //void LogWrite(string desc)
-        //{
-        //    db.Logs.Add(new Log(desc));
-        //    db.SaveChanges();
-        //}
+
+        List<string> list_info = new List<string>()
+            { "kenA", "kenB", "kenV", "shbmA", "shbmB", "flowPenA", "currentPenA", "flowPenB", "currentPenB", "dehmw" };
 
         [HttpPost, DisableRequestSizeLimit]
         public IActionResult Upload(IFormFile file)
@@ -34,54 +34,41 @@ namespace WebApi.Controllers
             {
                 id = s.ID;
             }
-
-
-            //LogWrite(myFile.FileName.ToString());
             List<HistValue> listTemps = new List<HistValue>();
-
-
-            //Signal sss = new Signal();
             try
             {
                 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 using (var reader = new System.IO.StreamReader(myFile.OpenReadStream(), Encoding.GetEncoding("Windows-1251")))
                 {
-
                     List<string[]> list = new List<string[]>();
                     List<Signal> signals = db.Signals.Where(w => w.Unit == unit).ToList();
                     List<string> headers = reader.ReadLine().Split(';').ToList();
                     List<string> engUnits = reader.ReadLine().Split(';').ToList();
 
-                    //Dictionary<int, List<Temp>> dict_temps = new Dictionary<int, List<Temp>>;
                     while (!reader.EndOfStream)
                     {
                         string[] line = reader.ReadLine().Split(';');
                         list.Add(line);
                     }
                     string dateFormat = "dd.MM.yy HH:mm:ss";
-
                     List<Stage> stages = new List<Stage>();
-
                     foreach (string[] row in list)
                     {
                         JObject jObject = new JObject();
                         DateTime date = DateTime.ParseExact(row[0], dateFormat, CultureInfo.InvariantCulture);
                         HistValue hv = new HistValue() { Date = date };
-                        //Temp temp = new Temp() { Date = date, Block = unit };
 
                         for (int i = 0; i < headers.Count; i++)
                         {
                             Signal signal = signals.FirstOrDefault(f => f.Desc == headers[i]);
-                            //sss = signal;
                             if (signal == null) continue;
                             if (signal.Type == "A")
                             {
-
-                                jObject.Add(signal.ID.ToString(), new JValue(float.Parse(row[i], CultureInfo.InvariantCulture)));
+                                jObject[signal.ID.ToString()] = float.Parse(row[i], CultureInfo.InvariantCulture);
                             }
                             else
                             {
-                                jObject.Add(signal.ID.ToString(), new JValue(int.Parse(row[i].Substring(0, 1), System.Globalization.NumberStyles.Any)));
+                                jObject[signal.ID.ToString()] = int.Parse(row[i].Substring(0, 1), System.Globalization.NumberStyles.Any);
                             }
                             if (signal.ID == id)
                             {
@@ -94,7 +81,6 @@ namespace WebApi.Controllers
                                     }
                                 }
                             }
-
                         }
                         hv.Data = JsonConvert.SerializeObject(jObject);
                         listTemps.Add(hv);
@@ -116,7 +102,6 @@ namespace WebApi.Controllers
             }
             catch (Exception ex)
             {
-                //LogWrite("Error upload " + myFile.FileName.ToString() + " " + ex.Message);
                 return StatusCode(500, ex.Message);
             }
 
@@ -125,140 +110,167 @@ namespace WebApi.Controllers
             switch (unit)
             {
                 case 3:
-                    max = db.Hist3Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist3Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist3Values.AddRange(listTemps.Select(d => new Hist3Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist3Values.AddRange(listTemps.Select(d => new Hist3Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist3Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv is null)
                         {
-                            var hv = db.Hist3Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist3Values.Add(new Hist3Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist3Values.Add(new Hist3Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 4:
-                    max = db.Hist4Values.Max(m => m.Date).Date;
-                    if (min > max)
+
+                    //max = db.Hist4Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist4Values.AddRange(listTemps.Select(d => new Hist4Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist4Values.AddRange(listTemps.Select(d => new Hist4Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist4Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv is null)
                         {
-                            var hv = db.Hist4Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist4Values.Add(new Hist4Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist4Values.Add(new Hist4Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 5:
-                    max = db.Hist5Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist5Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist5Values.AddRange(listTemps.Select(d => new Hist5Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist5Values.AddRange(listTemps.Select(d => new Hist5Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist5Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv is null)
                         {
-                            var hv = db.Hist5Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist5Values.Add(new Hist5Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist5Values.Add(new Hist5Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 6:
-                    max = db.Hist6Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist6Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist6Values.AddRange(listTemps.Select(d => new Hist6Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist6Values.AddRange(listTemps.Select(d => new Hist6Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist6Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv is null)
                         {
-                            var hv = db.Hist6Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist6Values.Add(new Hist6Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist6Values.Add(new Hist6Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 7:
-                    max = db.Hist7Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist7Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist7Values.AddRange(listTemps.Select(d => new Hist7Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist7Values.AddRange(listTemps.Select(d => new Hist7Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist7Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv is null)
                         {
-                            var hv = db.Hist7Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist7Values.Add(new Hist7Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist7Values.Add(new Hist7Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 8:
-                    max = db.Hist8Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist8Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist8Values.AddRange(listTemps.Select(d => new Hist8Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist8Values.AddRange(listTemps.Select(d => new Hist8Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist8Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv == null)
                         {
-                            var hv = db.Hist8Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist8Values.Add(new Hist8Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist8Values.Add(new Hist8Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
                 case 9:
-                    max = db.Hist9Values.Max(m => m.Date).Date;
-                    if (min > max)
+                    //max = db.Hist9Values.Max(m => m.Date).Date;
+                    //if (min > max)
+                    //{
+                    //    db.Hist9Values.AddRange(listTemps.Select(d => new Hist9Value() { Date = d.Date, Data = d.Data }));
+                    //}
+                    //else
+                    //{
+                    foreach (HistValue h in listTemps)
                     {
-                        db.Hist9Values.AddRange(listTemps.Select(d => new Hist9Value() { Date = d.Date, Data = d.Data }));
-                    }
-                    else
-                    {
-                        foreach (HistValue h in listTemps)
+                        var hv = db.Hist9Values.FirstOrDefault(f => f.Date == h.Date);
+                        if (hv == null)
                         {
-                            var hv = db.Hist9Values.FirstOrDefault(f => f.Date == h.Date);
-                            if (hv == null)
-                            {
-                                db.Hist9Values.Add(new Hist9Value() { Date = h.Date, Data = h.Data });
-                            }
+                            db.Hist9Values.Add(new Hist9Value() { Date = h.Date, Data = h.Data });
+                        }
+                        else
+                        {
+                            hv.Data = h.Data;
                         }
                     }
+                    //}
                     break;
 
                 default:
                     break;
             }
-            //LogWrite("Temps clear successfully");
-            //Tables.SaveTable(db, unit, listHistValue);
             db.SaveChanges();
+           
             List<string> result = new List<string>();
-            //var res = String.Concat("{unit:", unit, ", dateMin:", minDate.ToString("s"), ",dateMax:", maxDate.ToString("s"), "}");
             var res = new Res() { unit = unit, dateMin = listTemps.Min(m => m.Date).ToString("s"), dateMax = listTemps.Max(m => m.Date).AddMinutes(1).ToString("s") };
             result.Add(CalcKenMill(res.unit, res.dateMin, res.dateMax));
             result.Add(CalcPen(res.unit, res.dateMin, res.dateMax));
@@ -267,7 +279,7 @@ namespace WebApi.Controllers
             return Ok(result);
 
         }
-        
+
 
         [HttpGet("Recalc")]
         public IActionResult ReCalc(int unit, string date)
@@ -282,8 +294,8 @@ namespace WebApi.Controllers
             int startRou = 3;
             int stopRou = 9;
             int startPen = 5;
-            
-            if (unit>0)
+
+            if (unit > 0)
             {
                 startRou = unit;
                 stopRou = unit;
@@ -299,357 +311,402 @@ namespace WebApi.Controllers
                 res.Add(CalcPen(i, minDate, maxDate));
             }
 
-            return Ok(String.Join(';',res));
+            return Ok(String.Join(';', res));
         }
         private string CalcKenMill(int unit, string dateMin, string dateMax)
         {
             if (unit == 3 || unit == 4) return String.Empty;
             DateTime date_min = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
             DateTime date_max = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            var mergeSettings = new JsonMergeSettings
-            {
-                MergeArrayHandling = MergeArrayHandling.Merge
-            };
-
-            List<string> log = new List<string>();
-            List<string> list_info = new List<string>() { "kenA", "kenB", "kenV", "shbmA", "shbmB", "flowPenA", "currentPenA", "flowPenB", "currentPenB", "dehmw" };
-
-
-            var signals = (from signal in db.Signals where list_info.Contains(signal.AddInfo) select signal).ToList();// select signal;
-            List<string> ids = new List<string>();
-
-            //List<HistValue> data = (db.HistValues.Where(w => w.Date >= low_condition && w.Date < high_condition).OrderBy(o => o.Date)).ToList();
-
-            List<Ken> kens = db.Kens.Where(w => w.Datetime >= date_min && w.Datetime <= date_max).ToList();
+           
+            var signals = db.Signals.Where(w => w.Unit == unit);
             try
             {
-
-                if (unit == 3 || unit == 4) return String.Empty;
-                List<Ken> new_kens = new List<Ken>();
-                int idkA = signals.FirstOrDefault(f => f.AddInfo == list_info[0] && f.Unit == unit).ID;
-                int idkB = signals.FirstOrDefault(f => f.AddInfo == list_info[1] && f.Unit == unit).ID;
-                int idkV = signals.FirstOrDefault(f => f.AddInfo == list_info[2] && f.Unit == unit).ID;
-                int idmA = signals.FirstOrDefault(f => f.AddInfo == list_info[3] && f.Unit == unit).ID;
-                int idmB = signals.FirstOrDefault(f => f.AddInfo == list_info[4] && f.Unit == unit).ID;
-                int idpA = signals.FirstOrDefault(f => f.AddInfo == list_info[6] && f.Unit == unit).ID;
-                int idpB = signals.FirstOrDefault(f => f.AddInfo == list_info[8] && f.Unit == unit).ID;
-                int id_mw = signals.FirstOrDefault(f => f.AddInfo == "dehmw" && f.Unit == unit).ID;
-
-
+                int id_mw = signals.FirstOrDefault(f => f.AddInfo == list_info[9]).ID;
                 for (DateTime item = date_min; item < date_max; item = item.AddDays(1))
                 {
-                    Console.WriteLine(unit + ": " + item.ToString());
-                    var jKen = kens.FirstOrDefault(f => f.Datetime.Equals(item.Date), new Ken());
-                    JObject jObject = new JObject
-                        {
-                            {"oneKen"+unit , 0},
-                            {idkA.ToString(), new JArray{0, 0} },
-                            {idkB.ToString(), new JArray{0, 0} },
-                            {idkV.ToString(), new JArray{0, 0} },
-                            {idmA.ToString(), new JArray{0, 0, 0} },
-                            {idmB.ToString(), new JArray{0, 0, 0} }
-                        };
-
-                    //if (!string.IsNullOrEmpty(jKen.Data))
-                    //{
-                    //    jObject = JObject.Parse(jKen.Data);
-                    //}
-
-
-
-                    //Tables tables = new Tables();
-                    List<HistValue> dataOfDay = Tables.GetTable(db, unit, item.Date, item.Date.AddDays(1));// data.Where(w => w.Date.Date == item.Date).ToList();
-
-                    //Parallel.ForEach<string>(list_info, (str_id) =>
-
-                    foreach (string str_id in list_info)
+                    JObject json = new JObject();
+                    Device? device = db.Devices.FirstOrDefault(f => f.Datetime.Equals(item.Date) && f.Unit==unit);
+                    if (device is null)
                     {
-                        Dictionary<DateTime, Dictionary<int, float>> dict_histDatas = new Dictionary<DateTime, Dictionary<int, float>>();
-                        int id = signals.FirstOrDefault(f => f.AddInfo == str_id && f.Unit == unit).ID;
-                        Ken ken = kens.FirstOrDefault(f => f.Datetime.Equals(item.Date) && f.SignalID == id);
-                        if (ken == null)
-                        {
-                            if (str_id.Contains("ken") || str_id.Contains("shbm"))
-                            {
-                                ken = new Ken() { Datetime = item.Date, SignalID = id, Amperage = 0, Time = 0, Downtime = 0 };
-                                new_kens.Add(ken);
-                            }
-                            else
-                            {
-                                continue;
-                            }
-                        }
-
-
-
-
-
-                        if (str_id.Contains("ken"))
-                        {
-                            Console.WriteLine(unit.ToString() + str_id + ": " + item.ToString());
-                            foreach (var item_data in dataOfDay)
-                            {
-                                if (item_data.Data == "{}")
-                                {
-                                    log.Add(item_data.Date + ": " + unit);
-                                    continue;
-                                }
-                                else
-                                {
-                                    try
-                                    {
-                                        if (item_data.JsonData[id.ToString()].ToObject<float>() > 10 && item_data.JsonData[id_mw.ToString()].ToObject<float>() > 100)
-                                        {
-                                            dict_histDatas[item_data.Date] = item_data.JsonData.ToObject<IDictionary<int, float>>().ToDictionary(k => k.Key, v => v.Value);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-
-                                        log.Add(ex.Message);
-                                    }
-
-                                }
-                            }
-
-                            //histDatas = data.Select(s => new { date = s.Date, val = JsonConvert.DeserializeObject<Dictionary<int, float>>(s.Data) }).Where(w => w.val[id] > 10 && w.val[id_mw] > 100).ToDictionary(k => k.date, h => h.val);
-
-                            log.Add(str_id + ": histDatas=" + dict_histDatas.Count);
-
-                            if (dict_histDatas.Count > 0)
-                            {
-                                ken.Amperage = (float)Math.Round(dict_histDatas.Average(s => s.Value[id]), 1);
-                                ken.Time = (float)Math.Round(dict_histDatas.Count / 60.0, 1);
-                                log.Add("ID=" + ken.ID + "; Amper=" + ken.Amperage + "; TIme=" + ken.Time);
-                                log.Add("new kens=" + new_kens.Count);
-
-
-                                JObject jsonObject = new JObject();
-                                jsonObject[id.ToString()] = new JArray() { ken.Amperage, ken.Time };
-
-
-
-
-                                jObject.Merge(jsonObject, mergeSettings);
-                            }
-
-                        }
-                        if (str_id.Contains("shbm"))
-                        {
-                            Console.WriteLine(unit.ToString() + str_id + ": " + item.ToString());
-                            foreach (var item_dict_histDatas in dataOfDay)
-                            {
-                                if (item_dict_histDatas.Data == "{}")
-                                {
-                                    log.Add(item_dict_histDatas.Date + ":shbm " + unit);
-                                    continue;
-                                }
-                                else
-                                {
-                                    try
-                                    {
-
-                                        if (item_dict_histDatas.JsonData[id_mw.ToString()].ToObject<float>() > 5)
-                                        {
-                                            dict_histDatas[item_dict_histDatas.Date] = item_dict_histDatas.JsonData.ToObject<IDictionary<int, float>>().ToDictionary(k => k.Key, v => v.Value);
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-
-                                        log.Add(ex.Message);
-                                    }
-
-                                }
-                            }
-                            // histDatas = data.Select(s => new { date = s.Date, val = JsonConvert.DeserializeObject<Dictionary<int, float>>(s.Data) }).Where(w => w.val[id_mw] > 5).ToDictionary(k => k.date, h => h.val);
-                            if (dict_histDatas.Count > 0)
-                            {
-                                if (dict_histDatas.Max(m => m.Value[id]) > 0.5)
-                                {
-
-                                    ken.Amperage = (float)Math.Round(dict_histDatas.Where(w => w.Value[id] > 0.5).Average(m => m.Value[id]), 1);
-                                    ken.Time = (float)Math.Round(dict_histDatas.Where(w => w.Value[id] > 0.5).Count() / 60.0, 1);
-                                    log.Add("ID=" + ken.ID + "; Amper=" + ken.Amperage + "; TIme=" + ken.Time);
-                                    log.Add("new kens=" + new_kens.Count);
-                                }
-                                else
-                                {
-                                    ken.Amperage = 0;
-                                    ken.Time = 0;
-                                }
-                            }
-
-                            ken.Downtime = (float)Math.Round(dict_histDatas.Where(w => w.Value[id] < 0.5).Count() / 60.0, 1);
-                            //log.Add(ken.Datetime.ToString());
-                            jObject.Merge(
-                                  new JObject
-                                     {
-
-                                           { id.ToString(), new JArray{ken.Amperage, ken.Time, ken.Downtime } }
-
-
-                                       }, mergeSettings);
-
-                        }
-
-                        if (dict_histDatas.Count == 0)
-                        {
-                            ken.Amperage = 0;
-                            ken.Downtime = 0;
-                            ken.Time = 0;
-                        }
-                    }
-                    //);
-
-
-                    Ken _ken = kens.FirstOrDefault(f => f.Datetime.Equals(item.Date) && f.SignalID == -unit);
-                    if (_ken == null)
-                    {
-                        _ken = new Ken() { Datetime = item.Date, SignalID = -unit };
-                        new_kens.Add(_ken);
-                    }
-                    int oneTime = 0;
-                    Console.WriteLine(unit.ToString() + "Oneken: " + item.ToString());
-                    foreach (HistValue histData in dataOfDay)
-                    {
-                        try
-                        {
-                            Dictionary<int, float> values = JsonConvert.DeserializeObject<Dictionary<int, float>>(histData.Data);
-
-                            if (((values[idkA] > 10.0 && values[idkB] < 10 && values[idkV] < 10) || (values[idkA] < 10.0 && values[idkB] > 10 && values[idkV] < 10) || (values[idkA] < 10.0 && values[idkB] < 10 && values[idkV] > 10)) && values[id_mw] > 100.0)
-                            {
-                                oneTime++;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-
-                            log.Add(ex.Message);
-                        }
-
-
-                    }
-                    _ken.Time = (float)Math.Round(oneTime / 60.0, 1);
-
-                    jObject.Merge(new JObject {
-
-                            { "oneKen"+unit , _ken.Time }
-
-                            },
-                        mergeSettings);
-
-
-                    if (!string.IsNullOrEmpty(jKen.Data))
-                    {
-                        JObject jObject_data = JObject.Parse(jKen.Data);
-                        jObject_data.Merge(jObject, mergeSettings);
-                        jKen.Data = jObject_data.ToString(Formatting.None);
+                        device = new Device() { Datetime = item.Date, Unit=unit };
                     }
                     else
-                    {
-                        jKen.Data = jObject.ToString(Formatting.None);
-                    }
-                    db.SaveChanges();
-                }
+                        json = device.JsonData;
 
-                log.AddRange(new_kens.Select(s => s.SignalID.ToString()).ToList());
-                log.Add("new kens=" + new_kens.Count);
-                db.Kens.AddRange(new_kens);
+                    List<HistValue> dataOfDay = Tables.GetTable(db, unit, item.Date, item.Date.AddDays(1));// data.Where(w => w.Date.Date == item.Date).ToList();
+
+                    var idkA = signals.FirstOrDefault(f => f.AddInfo == list_info[0]).ID.ToString();
+                    var idkB = signals.FirstOrDefault(f => f.AddInfo == list_info[1]).ID.ToString();
+                    var idkV = signals.FirstOrDefault(f => f.AddInfo == list_info[2]).ID.ToString();
+
+                    var dataOne = dataOfDay.Where(
+                        w => (w.JsonData[idkA].ToObject<float>() > 10
+                    && w.JsonData[idkB].ToObject<float>() < 10
+                    && w.JsonData[idkV].ToObject<float>() < 10)
+                    || (w.JsonData[idkA].ToObject<float>() < 10
+                    && w.JsonData[idkB].ToObject<float>() > 10
+                    && w.JsonData[idkV].ToObject<float>() < 10)
+                    || (w.JsonData[idkA].ToObject<float>() < 10
+                    && w.JsonData[idkB].ToObject<float>() < 10
+                    && w.JsonData[idkV].ToObject<float>() > 10)
+                    );
+
+                    var TimeOne = Math.Round(dataOne.Count() / 60.0, 1);
+                    json["ken" + "One" + unit] = TimeOne;
+                    var denom = 0.0;
+                    var num = 0.0;
+                    ////////////////////KEN////////////////////////////////
+                    foreach (Signal signal in signals.Where(w => w.AddInfo.Contains("ken")))
+                    {
+                        //ток КЭН>10 и Мощность>100
+                        var data = dataOfDay.Where(w => w.JsonData[signal.ID.ToString()].ToObject<float>() > 10 &&
+                        w.JsonData[id_mw.ToString()].ToObject<float>() > 100).Select(w => w.JsonData[signal.ID.ToString()].ToObject<float>());
+                        var Time = Math.Round(data.Count() / 60.0, 1);
+                        if (Time > 0)
+                        {
+                            var Ampr = Math.Round(data.Average(), 1);
+                            json[signal.AddInfo + "Amp" + unit] = Ampr;
+                            json[signal.AddInfo + "Time" + unit] = Time;
+                            denom += Time;
+                            num += Ampr * Time;
+                        }
+                        else
+                        {
+                            json[signal.AddInfo + "Amp" + unit] = 0;
+                            json[signal.AddInfo + "Time" + unit] = 0;
+                        }
+
+
+                    }
+                    var Avg = Math.Round((num / denom), 1);
+                    json["ken" + "Avg" + unit] = Avg;
+
+                    //pair.Add("eff" + (b), Math.Round(Convert.ToDouble(pair["avg" + (b)]) * Math.Sqrt(3.0) * 6300 * 0.85 * Convert.ToDouble(pair["onetime" + b]) / 1000.0, 1));
+                    var Eff = Math.Round(Avg * Math.Sqrt(3.0) * 6300 * 0.85 * TimeOne / 1000.0, 1);
+                    json["ken" + "Eff" + unit] = Eff;
+
+                    /////////////////////////////ШБМ//////////////////////////////////////////
+                    var shbmDT = 0.0;
+                    var shbmEf = 0.0;
+                    foreach (Signal signal in signals.Where(w => w.AddInfo.Contains("shbm")))
+                    {
+                        //ток ШБМ>0,5
+                        var data = dataOfDay.Where(w => w.JsonData[signal.ID.ToString()].ToObject<float>() > 0.5
+                        && w.JsonData[id_mw.ToString()].ToObject<float>() > 5)
+                            .Select(w => w.JsonData[signal.ID.ToString()].ToObject<float>());
+                        var Time = Math.Round(data.Count() / 60.0, 1);
+                        var shbmAmpr = 0.0;
+                        if (Time > 0)
+                        {
+                            shbmAmpr = Math.Round(data.Average(), 1);
+                            json[signal.AddInfo + "Amp" + unit] = shbmAmpr;
+                            json[signal.AddInfo + "Time" + unit] = Time;
+                        }
+                        else
+                        {
+                            json[signal.AddInfo + "Amp" + unit] = 0;
+                            json[signal.AddInfo + "Time" + unit] = 0;
+                        }
+
+                        data = dataOfDay.Where(w => w.JsonData[signal.ID.ToString()].ToObject<float>() < 0.5
+                        && w.JsonData[id_mw.ToString()].ToObject<float>() > 5)
+                            .Select(w => w.JsonData[signal.ID.ToString()].ToObject<float>());
+                        shbmDT += Math.Round(data.Count() / 60.0, 1);
+                        shbmEf += shbmDT * Math.Round(data.Average(), 1);
+                    }
+                    json["shbmDT" + unit] = shbmDT;
+                    json["shbmEf" + unit] = shbmEf * 1000;
+                    device.Data = JsonConvert.SerializeObject(json);
+                    db.Devices.Add(device);
+                }
                 db.SaveChanges();
             }
             catch (Exception ex)
             {
                 return "Блок " + unit + ":КЭН " + ex.Message;
             }
+            //if (dict_histDatas.Count > 0)
+            //{
+            //    ken.Amperage = (float)Math.Round(dict_histDatas.Average(s => s.Value[signal.ID]), 1);
+            //    ken.Time = (float)Math.Round(dict_histDatas.Count / 60.0, 1);
+            //    log.Add("ID=" + ken.ID + "; Amper=" + ken.Amperage + "; TIme=" + ken.Time);
+            //    log.Add("new kens=" + new_kens.Count);
+
+
+            //    JObject jsonObject = new JObject();
+            //    jsonObject[signal.ID.ToString()] = new JArray() { ken.Amperage, ken.Time };
+
+
+
+
+            //    jObject.Merge(jsonObject, mergeSettings);
+            //}
+
+
+
+            //Console.WriteLine(unit.ToString() + signal.ID + ": " + item.ToString());
+            //foreach (var item_data in dataOfDay)
+            //{
+            //    if (item_data.Data == "{}")
+            //    {
+            //        log.Add(item_data.Date + ": " + unit);
+            //        continue;
+            //    }
+            //    else
+            //    {
+            //        try
+            //        {
+            //            //ток КЭН>10 и Мощность>100
+            //            if (item_data.JsonData[signal.ID.ToString()].ToObject<float>() > 10 && item_data.JsonData[id_mw.ToString()].ToObject<float>() > 100)
+            //            {
+            //                dict_histDatas[item_data.Date] = item_data.JsonData.ToObject<IDictionary<int, float>>().ToDictionary(k => k.Key, v => v.Value);
+            //            }
+            //        }
+            //        catch (Exception ex)
+            //        {
+
+            //            log.Add(ex.Message);
+            //        }
+
+            //    }
+            //}
+
+
+            // log.Add(signal.ID + ": histDatas=" + dict_histDatas.Count);
+
+
+
+            //if (dict_histDatas.Count > 0)
+            //{
+            //    ken.Amperage = (float)Math.Round(dict_histDatas.Average(s => s.Value[signal.ID]), 1);
+            //    ken.Time = (float)Math.Round(dict_histDatas.Count / 60.0, 1);
+            //    log.Add("ID=" + ken.ID + "; Amper=" + ken.Amperage + "; TIme=" + ken.Time);
+            //    log.Add("new kens=" + new_kens.Count);
+
+
+            //    JObject jsonObject = new JObject();
+            //    jsonObject[signal.ID.ToString()] = new JArray() { ken.Amperage, ken.Time };
+
+
+
+
+            //    jObject.Merge(jsonObject, mergeSettings);
+            //}
+
+
+            //if (signal.AddInfo.Contains("shbm"))
+            //{
+            //    Console.WriteLine(unit.ToString() + signal.ID + ": " + item.ToString());
+            //    foreach (var item_dict_histDatas in dataOfDay)
+            //    {
+            //        if (item_dict_histDatas.Data == "{}")
+            //        {
+            //            log.Add(item_dict_histDatas.Date + ":shbm " + unit);
+            //            continue;
+            //        }
+            //        else
+            //        {
+            //            try
+            //            {
+
+            //                if (item_dict_histDatas.JsonData[id_mw.ToString()].ToObject<float>() > 5)
+            //                {
+            //                    dict_histDatas[item_dict_histDatas.Date] = item_dict_histDatas.JsonData.ToObject<IDictionary<int, float>>().ToDictionary(k => k.Key, v => v.Value);
+            //                }
+            //            }
+            //            catch (Exception ex)
+            //            {
+
+            //                log.Add(ex.Message);
+            //            }
+
+            //        }
+            //    }
+            //    // histDatas = data.Select(s => new { date = s.Date, val = JsonConvert.DeserializeObject<Dictionary<int, float>>(s.Data) }).Where(w => w.val[id_mw] > 5).ToDictionary(k => k.date, h => h.val);
+            //    if (dict_histDatas.Count > 0)
+            //    {
+            //        if (dict_histDatas.Max(m => m.Value[signal.ID]) > 0.5)
+            //        {
+
+            //            ken.Amperage = (float)Math.Round(dict_histDatas.Where(w => w.Value[signal.ID] > 0.5).Average(m => m.Value[signal.ID]), 1);
+            //            ken.Time = (float)Math.Round(dict_histDatas.Where(w => w.Value[signal.ID] > 0.5).Count() / 60.0, 1);
+            //            log.Add("ID=" + ken.ID + "; Amper=" + ken.Amperage + "; TIme=" + ken.Time);
+            //            log.Add("new kens=" + new_kens.Count);
+            //        }
+            //        else
+            //        {
+            //            ken.Amperage = 0;
+            //            ken.Time = 0;
+            //        }
+            //    }
+
+            //    ken.Downtime = (float)Math.Round(dict_histDatas.Where(w => w.Value[signal.ID] < 0.5).Count() / 60.0, 1);
+            //    //log.Add(ken.Datetime.ToString());
+            //    jObject.Merge(
+            //          new JObject
+            //             {
+
+            //                   { signal.ID.ToString(), new JArray{ken.Amperage, ken.Time, ken.Downtime } }
+
+
+            //               }, mergeSettings);
+
+            //}
+
+            //if (dict_histDatas.Count == 0)
+            //{
+            //    ken.Amperage = 0;
+            //    ken.Downtime = 0;
+            //    ken.Time = 0;
+            //}
+            //}
+            //);
+
+
+            //    Ken _ken = kens.FirstOrDefault(f => f.Datetime.Equals(item.Date) && f.SignalID == -unit);
+            //    if (_ken == null)
+            //    {
+            //        _ken = new Ken() { Datetime = item.Date, SignalID = -unit };
+            //        new_kens.Add(_ken);
+            //    }
+            //    int oneTime = 0;
+            //    Console.WriteLine(unit.ToString() + "Oneken: " + item.ToString());
+            //    foreach (HistValue histData in dataOfDay)
+            //    {
+            //        try
+            //        {
+            //            Dictionary<int, float> values = JsonConvert.DeserializeObject<Dictionary<int, float>>(histData.Data);
+
+            //            if (((values[idkA] > 10.0 && values[idkB] < 10 && values[idkV] < 10) || (values[idkA] < 10.0 && values[idkB] > 10 && values[idkV] < 10) || (values[idkA] < 10.0 && values[idkB] < 10 && values[idkV] > 10)) && values[id_mw] > 100.0)
+            //            {
+            //                oneTime++;
+            //            }
+            //        }
+            //        catch (Exception ex)
+            //        {
+
+            //            log.Add(ex.Message);
+            //        }
+
+
+            //    }
+            //    _ken.Time = (float)Math.Round(oneTime / 60.0, 1);
+
+            //    jObject.Merge(new JObject {
+
+            //            { "oneKen"+unit , _ken.Time }
+
+            //            },
+            //        mergeSettings);
+
+
+            //    if (!string.IsNullOrEmpty(jKen.Data))
+            //    {
+            //        JObject jObject_data = JObject.Parse(jKen.Data);
+            //        jObject_data.Merge(jObject, mergeSettings);
+            //        jKen.Data = jObject_data.ToString(Formatting.None);
+            //    }
+            //    else
+            //    {
+            //        jKen.Data = jObject.ToString(Formatting.None);
+            //    }
+            //    db.SaveChanges();
+            //}
+
+            //log.AddRange(new_kens.Select(s => s.SignalID.ToString()).ToList());
+            //log.Add("new kens=" + new_kens.Count);
+
+
             //return Json(log);
             return "Блок " + unit + ": расчет КЭН, ШБМ завершен.";
         }
         private string CalcPen(int unit, string dateMin, string dateMax)
         {
             if (unit == 3 || unit == 4) return String.Empty;
-            DateTime low_condition = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            DateTime high_condition = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
-
-
-            List<Ken> new_kens = new List<Ken>();
-
-            List<Signal> signals = db.Signals.ToList();
-
-
-
-            List<string> Errors = new List<string>();
+            DateTime start = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            DateTime stop = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
+            var signals = db.Signals.Where(u => u.Unit == unit);
             List<string> ids_pen = new List<string> { "flowPenA,currentPenA,12,13", "flowPenB,currentPenB,22,23" };
 
-
-            //List<HistValue> data = (db.HistValues.Where(w => w.Date >= low_condition && w.Date < high_condition).OrderBy(o => o.Date)).ToList();
-
-            DateTime firstDayOfMonth = new DateTime(low_condition.Year, low_condition.Month, 1, 0, 0, 0);
-            DateTime firstDayNextMonth = firstDayOfMonth.AddMonths(1);
-
-            for (DateTime item = low_condition; item < high_condition; item = item.AddDays(1))
+            for (DateTime date = start; date < stop; date = date.AddDays(1))
             {
-                DateTime nextDay = item.AddDays(1);
-                Console.WriteLine(nextDay);
-                //  List<HistValue> data = db.HistValues.Where(w => w.Date >= item && w.Date < nextDay).OrderBy(o => o.Date).ToList();
-                var kens = db.Kens.Where(f => f.Datetime.Equals(item.Date));
+                DateTime nextDay = date.AddDays(1);
 
-
-                //Tables tables = new Tables();
-                List<HistValue> data = Tables.GetTable(db, unit, item, nextDay);
+                var device = db.Devices.FirstOrDefault(f => f.Datetime == date && f.Unit==unit);
+                var json = new JObject();
+                if (device == null)
+                {
+                    device = new Device() { Datetime = date };
+                }
+                else
+                {
+                    json = device.JsonData;
+                }
+                List<HistValue> data = Tables.GetTable(db, unit, date, nextDay);
                 foreach (string str_id in ids_pen)
                 {
                     string[] str = str_id.Split(',');
-                    int id_flow_pen = signals.FirstOrDefault(f => f.AddInfo == str[0] && f.Unit == unit).ID;
-                    int id_curr_pen = signals.FirstOrDefault(f => f.AddInfo == str[1] && f.Unit == unit).ID;
-                    string id_NO = signals.FirstOrDefault(f => f.AddInfo == str[2] && f.Unit == unit).ID.ToString();
-                    string id_NC = signals.FirstOrDefault(f => f.AddInfo == str[3] && f.Unit == unit).ID.ToString();
-
-
-                    var ken = kens.FirstOrDefault(f => f.SignalID == id_curr_pen);
-                    if (ken == null)
-                    {
-                        ken = new Ken() { Datetime = item.Date, SignalID = id_curr_pen };
-                        db.Kens.Add(ken);
-                    }
+                    Signal flow_pen = signals.FirstOrDefault(f => f.AddInfo == str[0]);
+                    Signal curr_pen = signals.FirstOrDefault(f => f.AddInfo == str[1]);
+                    Signal NO = signals.FirstOrDefault(f => f.AddInfo == str[2]);
+                    Signal NC = signals.FirstOrDefault(f => f.AddInfo == str[3]);
                     try
                     {
-                        List<float> curr = new List<float>();
                         List<float> flow = new List<float>();
-                        foreach (HistValue histValue in data)
-                        {
-                            if (histValue.JsonData[id_curr_pen.ToString()].ToObject<float>() > 10)
-                            {
-                                curr.Add(histValue.JsonData[id_curr_pen.ToString()].ToObject<float>());
+                        //foreach (HistValue histValue in data)
+                        //{
+                        //    if (histValue.JsonData[id_curr_pen.ToString()].ToObject<float>() > 10)
+                        //    {
+                        //        curr.Add(histValue.JsonData[id_curr_pen.ToString()].ToObject<float>());
 
-                                if (histValue.JsonData[id_NO].ToObject<int>() == 1 && histValue.JsonData[id_NC].ToObject<int>() == 0)
-                                {
-                                    flow.Add(histValue.JsonData[id_flow_pen.ToString()].ToObject<float>());
-                                }
-                                else
-                                {
-                                    flow.Add((float)(histValue.JsonData[id_flow_pen.ToString()].ToObject<float>() + 170.0));
-                                }
+                        //        if (histValue.JsonData[id_NO].ToObject<int>() == 1 && histValue.JsonData[id_NC].ToObject<int>() == 0)
+                        //        {
+                        //            flow.Add(histValue.JsonData[id_flow_pen.ToString()].ToObject<float>());
+                        //        }
+                        //        else
+                        //        {
+                        //            flow.Add((float)(histValue.JsonData[id_flow_pen.ToString()].ToObject<float>() + 170.0));
+                        //        }
+                        //    }
+                        //}
+
+                        var dataCurr = data.Where(w => w.JsonData[curr_pen.ID.ToString()].ToObject<float>() > 10.0)
+                            .Select(s => new
+                            {
+                                Curr = s.JsonData[curr_pen.ID.ToString()].ToObject<float>(),
+                                NO = s.JsonData[NO.ID.ToString()].ToObject<int>(),
+                                NC = s.JsonData[NC.ID.ToString()].ToObject<int>(),
+                                Flow = s.JsonData[flow_pen.ID.ToString()].ToObject<float>()
+                            });
+
+                        foreach (var item in dataCurr)
+                        {
+                            if (item.NO == 1 && item.NC == 0)
+                            {
+                                flow.Add(item.Flow);
+                            }
+                            else
+                            {
+                                flow.Add(item.Flow + 170);
                             }
                         }
-                        //List<float> curr = data.Where(w => w.JsonData[id_curr_pen.ToString()].ToObject<float>() > 10).Select(s => s.JsonData[id_curr_pen.ToString()].ToObject<float>()).ToList();
-                        //List<float> flow = data.Where(w => w.JsonData[id_curr_pen.ToString()].ToObject<float>() > 10).Select(s => s.JsonData[id_flow_pen.ToString()].ToObject<float>()).ToList();
 
-                        // var histDatas = data.Select(s => new { date = s.Date, val = JsonConvert.DeserializeObject<Dictionary<int, float>>(s.Data) }).Where(w => w.val[id_curr_pen] > 10).ToDictionary(k => k.date, h => h.val);
+                        //if (curr.Count() == 0)
+                        //{
+                        //    ken.Amperage = 0;
+                        //    ken.Time = 0;
+                        //    ken.Downtime = 0;
+                        //    db.SaveChanges();
+                        //    continue;
+                        //}
 
-
-                        if (curr.Count() == 0)
-                        {
-                            ken.Amperage = 0;
-                            ken.Time = 0;
-                            ken.Downtime = 0;
-                            db.SaveChanges();
-                            continue;
-                        }
-
-                        ken.Amperage = (float)Math.Round(curr.Average(), 1);
-                        ken.Downtime = (float)Math.Round(flow.Average(), 1);
-                        ken.Time = (float)Math.Round(curr.Count() / 60.0, 1);
+                        var Ampr = Math.Round(dataCurr.Average(a => a.Curr), 1);
+                        var Flow = (float)Math.Round(flow.Average(), 1);
+                        var Time = (float)Math.Round(dataCurr.Count() / 60.0, 1);
+                        json[curr_pen.AddInfo[^4..] + "Ampr" + unit] = Ampr;
+                        json[flow_pen.AddInfo[^4..] + "Flow" + unit] = Flow;
+                        json[curr_pen.AddInfo[^4..] + "Time" + unit] = Time;
 
                         //ken.Amperage = (float)Math.Round(histDatas.Average(s => s.Value[id_curr_pen]), 1);
                         //ken.Downtime = (float)Math.Round(histDatas.Average(s => s.Value[id_flow_pen]), 1);
@@ -658,143 +715,162 @@ namespace WebApi.Controllers
                     }
                     catch (Exception ex)
                     {
-                        Errors.Add(item.ToShortDateString() + ": " + id_curr_pen.ToString() + " - " + ex.Message);
-                        continue;
+                        return ex.Message;
                     }
-
-                    if (db.ChangeTracker.HasChanges())
-                    {
-                        db.SaveChanges();
-                    }
-
-
                 }
-
-
+                device.Data = JsonConvert.SerializeObject(json);
+                db.Devices.Add(device);
+                db.SaveChanges();
 
             }
 
 
+            //Pen pen = db.Pens.FirstOrDefault(f => f.Datetime == firstDayOfMonth);
 
-            if (unit == 3 || unit == 4) return String.Empty;
-
-            Pen pen = db.Pens.FirstOrDefault(f => f.Datetime == firstDayOfMonth);
-
-            if (pen == null)
-            {
-                pen = new Pen() { Datetime = firstDayOfMonth };
-                db.Pens.Add(pen);
-            }
+            //if (pen == null)
+            //{
+            //    pen = new Pen() { Datetime = firstDayOfMonth };
+            //    db.Pens.Add(pen);
+            //}
 
 
             foreach (string str_id in ids_pen)
             {
                 string[] str = str_id.Split(',');
-                // int id_flow_pen = block.FirstOrDefault(f => f.AddInfo == str_id.Split(',')[0]).ID;
-                int id_curr_pen = signals.FirstOrDefault(f => f.AddInfo == str[1] && f.Unit == unit).ID;
+                Signal curr_pen = signals.FirstOrDefault(f => f.AddInfo == str[1] && f.Unit == unit);
+                var name = curr_pen.AddInfo[^4..];
+                var data = db.Devices.Where(w => w.Datetime.Year == start.Year && w.Datetime.Month == start.Month && w.Unit==unit)
+                    .Select(s => new
+                    {
 
-                List<Ken> listOnePen = db.Kens.Where(w => w.Datetime >= firstDayOfMonth && w.Datetime < firstDayNextMonth && w.SignalID == id_curr_pen).ToList();
-                float time = listOnePen.Sum(s => s.Time);
-                float flow = 0;
-                foreach (var itemOnePen in listOnePen)
-                {
-                    flow += itemOnePen.Downtime * itemOnePen.Time;
-                }
+                        Flow = s.JsonData[name + unit.ToString() + "Flow"].ToObject<float>() *
+                        s.JsonData[name + unit.ToString() + "Time"].ToObject<float>(),
+                        Time = s.JsonData[name + unit.ToString() + "Time"].ToObject<float>()
+                    }
+                    );
+                var time = data.Sum(s => s.Time);
+                var flow = 0.0;
                 if (time > 0)
                 {
-                    flow = (float)Math.Round(flow / time, 4);
+                    var sum = Convert.ToDouble(data.Sum(s => s.Flow) / time);
+                    flow = Math.Round(sum, 4);
                 }
 
+                var p = db.Devices.FirstOrDefault(f => f.Datetime.Year == start.Year
+                && f.Datetime.Month == start.Month
+                && f.Datetime.Day == 1
+                && f.Unit == unit);
 
-                switch (unit)
+                if (p is not null)
                 {
-                    case 3:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow3A = flow;
-                            pen.Time3A = time;
-                        }
-                        else
-                        {
-                            pen.Flow3B = flow;
-                            pen.Time3B = time;
-                        }
-                        break;
-                    case 4:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow4A = flow;
-                            pen.Time4A = time;
-                        }
-                        else
-                        {
-                            pen.Flow4B = flow;
-                            pen.Time4B = time;
-                        }
-                        break;
-                    case 5:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow5A = flow;
-                            pen.Time5A = time;
-                        }
-                        else
-                        {
-                            pen.Flow5B = flow;
-                            pen.Time5B = time;
-                        }
-                        break;
-                    case 6:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow6A = flow;
-                            pen.Time6A = time;
-                        }
-                        else
-                        {
-                            pen.Flow6B = flow;
-                            pen.Time6B = time;
-                        }
-                        break;
-                    case 7:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow7A = flow;
-                            pen.Time7A = time;
-                        }
-                        else
-                        {
-                            pen.Flow7B = flow;
-                            pen.Time7B = time;
-                        }
-                        break;
-                    case 8:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow8A = flow;
-                            pen.Time8A = time;
-                        }
-                        else
-                        {
-                            pen.Flow8B = flow;
-                            pen.Time8B = time;
-                        }
-                        break;
-                    case 9:
-                        if (str_id[7] == 'A')
-                        {
-                            pen.Flow9A = flow;
-                            pen.Time9A = time;
-                        }
-                        else
-                        {
-                            pen.Flow9B = flow;
-                            pen.Time9B = time;
-                        }
-                        break;
-                    default:
-                        break;
+                    var json = p.JsonData;
+
+                    json[name + "FlowCons" + unit] = flow;
+                    json[name + "TimeCons" + unit] = time*5;
                 }
+
+                //List<Ken> listOnePen = db.Kens.Where(w => w.Datetime >= firstDayOfMonth && w.Datetime < firstDayNextMonth && w.SignalID == id_curr_pen).ToList();
+                //float time = listOnePen.Sum(s => s.Time);
+                //float flow = 0;
+                //foreach (var itemOnePen in listOnePen)
+                //{
+                //    flow += itemOnePen.Downtime * itemOnePen.Time;
+                //}
+                //if (time > 0)
+                //{
+                //    flow = (float)Math.Round(flow / time, 4);
+                //}
+
+
+                //switch (unit)
+                //{
+                //    case 3:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow3A = flow;
+                //            pen.Time3A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow3B = flow;
+                //            pen.Time3B = time;
+                //        }
+                //        break;
+                //    case 4:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow4A = flow;
+                //            pen.Time4A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow4B = flow;
+                //            pen.Time4B = time;
+                //        }
+                //        break;
+                //    case 5:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow5A = flow;
+                //            pen.Time5A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow5B = flow;
+                //            pen.Time5B = time;
+                //        }
+                //        break;
+                //    case 6:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow6A = flow;
+                //            pen.Time6A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow6B = flow;
+                //            pen.Time6B = time;
+                //        }
+                //        break;
+                //    case 7:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow7A = flow;
+                //            pen.Time7A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow7B = flow;
+                //            pen.Time7B = time;
+                //        }
+                //        break;
+                //    case 8:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow8A = flow;
+                //            pen.Time8A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow8B = flow;
+                //            pen.Time8B = time;
+                //        }
+                //        break;
+                //    case 9:
+                //        if (str_id[7] == 'A')
+                //        {
+                //            pen.Flow9A = flow;
+                //            pen.Time9A = time;
+                //        }
+                //        else
+                //        {
+                //            pen.Flow9B = flow;
+                //            pen.Time9B = time;
+                //        }
+                //        break;
+                //    default:
+                //        break;
+                //}
 
             }
             db.SaveChanges();
@@ -802,121 +878,121 @@ namespace WebApi.Controllers
 
 
 
-            return "Блок " + unit + ": расчет ПЭН завершен." + String.Join(',',Errors);
+            return "Блок " + unit + ": расчет ПЭН завершен.";
         }
         private string CalcRou(int unit, string dateMin, string dateMax)
         {
             try
             {
-            DateTime low_condition = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            DateTime high_condition = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
+                DateTime low_condition = DateTime.Parse(dateMin, null, System.Globalization.DateTimeStyles.RoundtripKind);
+                DateTime high_condition = DateTime.Parse(dateMax, null, System.Globalization.DateTimeStyles.RoundtripKind);
 
-            List<Signal> signals = db.Signals.Where(w => w.AddInfo == "rou24" || w.AddInfo == "rou140" || w.AddInfo == "generator").ToList();
-            List<string> Errors = new List<string>();
+                List<Signal> signals = db.Signals.Where(w => w.AddInfo == "rou24" || w.AddInfo == "rou140" || w.AddInfo == "generator").ToList();
+                List<string> Errors = new List<string>();
 
-            ///////////////////////////////24/13////////////////////////////////////////////////
+                ///////////////////////////////24/13////////////////////////////////////////////////
 
 
-            for (DateTime d = low_condition; d < high_condition; d = d.AddDays(1))
-            {
-                DateTime nextDay = d.AddDays(1);
-                // var data = db.HistValues.Where(f => f.Date >= d && f.Date < nextDay).OrderBy(o => o.Date).ToList();
-                Rou rou = db.Rous.FirstOrDefault(f => f.Datetime == d);
-                if (rou == null)
+                for (DateTime d = low_condition; d < high_condition; d = d.AddDays(1))
                 {
-                    rou = new Rou() { Datetime = d };
-                    db.Rous.Add(rou);
-                }
-
-
-                List<HistValue> data = Tables.GetTable(db, unit, d, nextDay);
-                if (data.Count == 0)
-                {
-                    return "Блок " + unit + ": нет данных" + d.ToString("s");
-                }
-
-                List<float> newrou = new List<float>();
-                float avRou = 0;
-                string id_gen = "";
-                if (unit >= 5 && unit <= 9)
-                {
-
-
-                    id_gen = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "generator").ID.ToString();
-                    string id = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou24").ID.ToString();
-                    List<float> iEnumAvRou24 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id].ToObject<float>()).ToList();
-
-                    foreach (float itemrou in iEnumAvRou24)
+                    DateTime nextDay = d.AddDays(1);
+                    // var data = db.HistValues.Where(f => f.Date >= d && f.Date < nextDay).OrderBy(o => o.Date).ToList();
+                    Rou rou = db.Rous.FirstOrDefault(f => f.Datetime == d);
+                    if (rou == null)
                     {
-                        if (itemrou >= 0)
+                        rou = new Rou() { Datetime = d };
+                        db.Rous.Add(rou);
+                    }
+
+
+                    List<HistValue> data = Tables.GetTable(db, unit, d, nextDay);
+                    if (data.Count == 0)
+                    {
+                        return "Блок " + unit + ": нет данных" + d.ToString("s");
+                    }
+
+                    List<float> newrou = new List<float>();
+                    float avRou = 0;
+                    string id_gen = "";
+                    if (unit >= 5 && unit <= 9)
+                    {
+
+
+                        id_gen = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "generator").ID.ToString();
+                        string id = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou24").ID.ToString();
+                        List<float> iEnumAvRou24 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id].ToObject<float>()).ToList();
+
+                        foreach (float itemrou in iEnumAvRou24)
                         {
-                            newrou.Add(itemrou);
+                            if (itemrou >= 0)
+                            {
+                                newrou.Add(itemrou);
+                            }
+                            else
+                            {
+                                newrou.Add(0);
+                            }
+                        }
+                        avRou = 0;
+                        if (iEnumAvRou24.Count > 0)
+                        {
+                            avRou = (float)Math.Round(newrou.Average(), 2);
+                        }
+                        switch (unit)
+                        {
+                            case 3: rou.Unit3 = avRou; break;
+                            case 4: rou.Unit4 = avRou; break;
+                            case 5: rou.Unit5 = avRou; break;
+                            case 6: rou.Unit6 = avRou; break;
+                            case 7: rou.Unit7 = avRou; break;
+                            case 8: rou.Unit8 = avRou; break;
+                            case 9: rou.Unit9 = avRou; break;
+                            default: break;
+                        }
+                    }
+                    if (unit == 3 || unit == 7 || unit == 9)
+                    {
+                        ///////////////////////////140/15//////////////////////////////////////
+                        string id140 = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou140").ID.ToString();
+                        List<float> iEnumAvRou140 = new List<float>();
+                        if (unit == 3)
+                        {
+                            iEnumAvRou140 = data.Select(s => s.JsonData[id140].ToObject<float>()).ToList();
                         }
                         else
                         {
-                            newrou.Add(0);
+                            iEnumAvRou140 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id140].ToObject<float>()).ToList();
                         }
-                    }
-                    avRou = 0;
-                    if (iEnumAvRou24.Count > 0)
-                    {
-                        avRou = (float)Math.Round(newrou.Average(), 2);
-                    }
-                    switch (unit)
-                    {
-                        case 3: rou.Unit3 = avRou; break;
-                        case 4: rou.Unit4 = avRou; break;
-                        case 5: rou.Unit5 = avRou; break;
-                        case 6: rou.Unit6 = avRou; break;
-                        case 7: rou.Unit7 = avRou; break;
-                        case 8: rou.Unit8 = avRou; break;
-                        case 9: rou.Unit9 = avRou; break;
-                        default: break;
-                    }
-                }
-                if (unit == 3 || unit == 7 || unit == 9)
-                {
-                    ///////////////////////////140/15//////////////////////////////////////
-                    string id140 = signals.FirstOrDefault(f => f.Unit == unit && f.AddInfo == "rou140").ID.ToString();
-                    List<float> iEnumAvRou140 = new List<float>();
-                    if (unit == 3)
-                    {
-                        iEnumAvRou140 = data.Select(s => s.JsonData[id140].ToObject<float>()).ToList();
-                    }
-                    else
-                    {
-                        iEnumAvRou140 = data.Where(w => w.JsonData[id_gen].ToObject<int>() > 0).Select(s => s.JsonData[id140].ToObject<float>()).ToList();
-                    }
 
 
-                    newrou.Clear();
-                    foreach (float itemrou in iEnumAvRou140)
-                    {
-                        if (itemrou >= 0)
+                        newrou.Clear();
+                        foreach (float itemrou in iEnumAvRou140)
                         {
-                            newrou.Add(itemrou);
+                            if (itemrou >= 0)
+                            {
+                                newrou.Add(itemrou);
+                            }
+                            else
+                            {
+                                newrou.Add(0);
+                            }
                         }
-                        else
+
+                        if (iEnumAvRou140.Count > 0)
                         {
-                            newrou.Add(0);
+                            avRou = (float)Math.Round(newrou.Average(), 2);
+                        }
+                        switch (unit)
+                        {
+                            case 3: rou.Unit3Big = avRou; break;
+                            case 7: rou.Unit7Big = avRou; break;
+                            case 9: rou.Unit9Big = avRou; break;
+                            default: break;
                         }
                     }
 
-                    if (iEnumAvRou140.Count > 0)
-                    {
-                        avRou = (float)Math.Round(newrou.Average(), 2);
-                    }
-                    switch (unit)
-                    {
-                        case 3: rou.Unit3Big = avRou; break;
-                        case 7: rou.Unit7Big = avRou; break;
-                        case 9: rou.Unit9Big = avRou; break;
-                        default: break;
-                    }
+                    db.SaveChanges();
                 }
-
-                db.SaveChanges();
-            }
 
 
 
@@ -926,7 +1002,7 @@ namespace WebApi.Controllers
             catch (Exception ex)
             {
 
-                return "Блок " + unit + ":РОУ "+ex.Message;
+                return "Блок " + unit + ":РОУ " + ex.Message;
             }
             return "Блок " + unit + ": расчет РОУ завершен.";
         }
@@ -986,12 +1062,12 @@ namespace WebApi.Controllers
             result.FileDownloadName = "Metall" + unit.ToString() + ".xml";
             return result;
         }
-        
+
 
         [HttpGet("Edit")]
         public IActionResult GetEditStages(int unit, string date)
         {
-            if (unit == 0 || unit==3 || unit==4)
+            if (unit == 0 || unit == 3 || unit == 4)
             {
                 return Ok("");
             }
@@ -1010,7 +1086,7 @@ namespace WebApi.Controllers
             string id_press = signals.FirstOrDefault(f => f.Code.Contains("CP001")).ID.ToString();
             string id_stage = signals.FirstOrDefault(f => f.Code.Contains("Stage")).ID.ToString();
 
-            var f = histValues.Select(s => new 
+            var f = histValues.Select(s => new
             {
                 Id = s.ID,
                 Date = s.Date.ToString("s"),
@@ -1035,7 +1111,7 @@ namespace WebApi.Controllers
 
             int id = ds["id"].Value<int>();
             string values = ds["values"].ToString();
-            int unit = ds["unit"].Value<int>(); 
+            int unit = ds["unit"].Value<int>();
             string date = ds["date"].ToString();
 
             DateTime d = DateTime.Parse(date, null, System.Globalization.DateTimeStyles.RoundtripKind);
@@ -1045,7 +1121,7 @@ namespace WebApi.Controllers
             var deser_values = JsonConvert.DeserializeObject<JObject>(values);
             int number_stage = deser_values["stage"].ToObject<int>();
 
-            JObject j = JObject.Parse(histValue.Data);
+            JObject j = histValue.JsonData;
             j[id_stage] = number_stage;
             histValue.Data = JsonConvert.SerializeObject(j);
 
@@ -1060,7 +1136,7 @@ namespace WebApi.Controllers
                 stage.Number = number_stage;
                 db.Stages.Add(stage);
             }
-            
+
             if (stage != null)
             {
                 if (number_stage == 0)
@@ -1077,7 +1153,7 @@ namespace WebApi.Controllers
 
             return Ok();
         }
-        
+
         [HttpGet("CheckData")]
         public IActionResult CheckData(int unit, string date)
         {
@@ -1085,19 +1161,19 @@ namespace WebApi.Controllers
             List<Error> response = new List<Error>();
 
             DateTime dateTime = DateTime.Parse(date, null, System.Globalization.DateTimeStyles.RoundtripKind);
-            
+
             DateTime now = DateTime.Now;
             now = now.Add(-now.TimeOfDay).AddSeconds(-1);
             int start = unit;
             int stop = unit;
-            if (unit==0)
+            if (unit == 0)
             {
                 start = 3;
                 stop = 9;
             }
             for (int i = start; i <= stop; i++)
             {
-               
+
                 switch (i)
                 {
                     case 3:
@@ -1142,7 +1218,7 @@ namespace WebApi.Controllers
                 int count = signals.Count;
                 for (DateTime i = dateTime; i <= now; i = i.AddMinutes(1))
                 {
-                    Error error = new Error() { Date = i, Unit=unit.ToString()  };
+                    Error error = new Error() { Date = i, Unit = unit.ToString() };
                     var row = histValues.FirstOrDefault(f => f.Date == i);
                     if (row == null)
                     {
@@ -1166,8 +1242,8 @@ namespace WebApi.Controllers
 
                 return response;
             }
-            
-            return Ok(response.GroupBy(g=>g.Date).Select(s => String.Join('-', s.Key,"Блоки: "+String.Join(',',s.Select(u=>u.Unit))+
+
+            return Ok(response.GroupBy(g => g.Date).Select(s => String.Join('-', s.Key, "Блоки: " + String.Join(',', s.Select(u => u.Unit)) +
                 ";")));
         }
 
@@ -1220,7 +1296,7 @@ namespace WebApi.Controllers
             public string Unit { get; set; }
         }
 
-         private class EditStage
+        private class EditStage
         {
             public int Id { get; set; }
             public string Date { get; set; }

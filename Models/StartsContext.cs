@@ -12,6 +12,7 @@ namespace WebApi.Models
         public DbSet<Rou> Rous { get; set; }
         public DbSet<Pen> Pens { get; set; }
         public DbSet<Ken> Kens { get; set; }
+        public DbSet<Device> Devices { get; set; }
         ////public DbSet<SeriesData> SeriesDatas { get; set; }
         public DbSet<Category> Categories { get; set; }
 
